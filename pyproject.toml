@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-failover-router"
+version = "0.1.0"
+description = "Thread-safe failover router across n priority-ordered LLM providers."
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+openai = ["openai"]
+anthropic = ["anthropic"]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["llm_failover_router"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
