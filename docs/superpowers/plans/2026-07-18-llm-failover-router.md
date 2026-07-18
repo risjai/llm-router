@@ -949,42 +949,53 @@ def test_traffic_shifts_after_x_failures_then_returns_after_y_successes():
     assert served["primary"] > 0
 
 
-def test_all_unhealthy_rejects_leftover():
+def test_all_unhealthy_rejects_leftover_exact_ratio():
     # Both providers permanently fail. x=1 so each trips after one failure.
-    primary = MockProvider("primary", outcomes=[False] * 1000)
-    secondary = MockProvider("secondary", outcomes=[False] * 1000)
+    # Recovery is impossible (never succeed), so the steady state is fixed:
+    # weights [10, 10] + reject 80. SWRR is deterministic, so over any window
+    # of 100 the split is EXACT — not approximate.
+    primary = MockProvider("primary", outcomes=[False] * 100000)
+    secondary = MockProvider("secondary", outcomes=[False] * 100000)
     router = FailoverRouter([primary, secondary], RouterConfig(p=10, x=1, y=5))
 
-    served = _route_many(router, 200)
-    # Once both are unhealthy: weights [10, 10] + reject 80.
-    # Probes surface as ERROR (fail-fast on a failing provider); leftover REJECTs.
-    assert served["REJECT"] > 0
-    assert served["ERROR"] > 0
+    # Trip both to unhealthy (one failing route each) to reach steady state.
+    with pytest.raises(ProviderError):
+        router.route(None)  # primary probe (index 0) fails -> primary unhealthy
+    with pytest.raises(ProviderError):
+        router.route(None)  # secondary probe fails -> secondary unhealthy
+
+    # Reset the observable call counters so we measure ONLY the steady state.
+    primary.call_count = 0
+    secondary.call_count = 0
+
+    served = _route_many(router, 100)
+    # Steady weights [10, 10, reject 80]: exactly 10 probes to each provider
+    # (all ERROR, since they keep failing) and exactly 80 REJECTs.
+    assert served["ERROR"] == 20
+    assert served["REJECT"] == 80
+    # Each provider was invoked exactly its probe share — proof the probe stream
+    # keeps flowing so recovery is always possible.
+    assert primary.call_count == 10
+    assert secondary.call_count == 10
 
 
-def test_reject_records_no_health_outcome():
-    # A rejected request must not touch any provider or its counters.
-    primary = MockProvider("primary", outcomes=[False])
-    secondary = MockProvider("secondary", outcomes=[False])
+def test_reject_invokes_no_provider():
+    # The reject bucket must invoke NO provider. With both unhealthy and never
+    # recovering, exactly p% reaches each provider and the leftover rejects;
+    # the total invocations across a 100-window must equal exactly n*p (= 20),
+    # never more. This deterministically proves reject touches no provider.
+    primary = MockProvider("primary", outcomes=[False] * 100000)
+    secondary = MockProvider("secondary", outcomes=[False] * 100000)
     router = FailoverRouter([primary, secondary], RouterConfig(p=10, x=1, y=5))
-    # Trip both unhealthy.
     with pytest.raises(ProviderError):
         router.route(None)
     with pytest.raises(ProviderError):
         router.route(None)
-    calls_before = primary.call_count + secondary.call_count
-    # Route until we hit a reject; provider call counts must not change on reject.
-    for _ in range(200):
-        try:
-            router.route(None)
-        except NoHealthyProviderError:
-            # This particular request was rejected.
-            pass
-        except ProviderError:
-            pass
-    # We can't isolate a single reject's effect precisely here, but we assert the
-    # invariant structurally in the implementation; smoke check that rejects occur.
-    assert primary.call_count + secondary.call_count >= calls_before
+    primary.call_count = 0
+    secondary.call_count = 0
+    _route_many(router, 100)
+    # n*p = 2*10 = 20 total invocations; the other 80 rejected without any call.
+    assert primary.call_count + secondary.call_count == 20
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
