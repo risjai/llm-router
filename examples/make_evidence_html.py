@@ -49,7 +49,7 @@ pre { font-family: 'SF Mono', Menlo, Monaco, monospace; font-size: 14.5px;
 .bar-fill { height:100%; border-radius:6px; font-weight:700; font-size:14px; color:#fff;
   min-width:6px; }
 .bar-val { position:absolute; top:0; height:34px; display:flex; align-items:center;
-  padding-left:14px; font-weight:700; font-size:14px; color:#e6edf3; }
+  padding-left:14px; font-weight:700; font-size:14px; color:#e6edf3; white-space:nowrap; }
 .bar-fill.primary{background:linear-gradient(90deg,#1f6feb,#58a6ff);}
 .bar-fill.secondary{background:linear-gradient(90deg,#238636,#3fb950);}
 .bar-fill.reject{background:linear-gradient(90deg,#da3633,#f85149);}
