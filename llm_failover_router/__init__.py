@@ -9,6 +9,7 @@ from llm_failover_router.errors import (
     ConfigError,
 )
 from llm_failover_router.provider import Provider, MockProvider
+from llm_failover_router.health import HealthState, ProviderHealth
 
 __all__ = [
     "ProviderError",
@@ -16,4 +17,6 @@ __all__ = [
     "ConfigError",
     "Provider",
     "MockProvider",
+    "HealthState",
+    "ProviderHealth",
 ]
