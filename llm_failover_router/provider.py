@@ -70,3 +70,72 @@ class MockProvider(Provider):
         if not succeed:
             raise ProviderError(f"{self.name} mock failure")
         return self._response
+
+
+class OpenAIProvider(Provider):
+    """Thin adapter over the OpenAI Chat Completions API.
+
+    The ``openai`` SDK is imported lazily and only when no ``client`` is
+    injected, so importing this module never requires the package. Tests inject
+    a fake client. ``invoke`` expects ``{"messages": [...]}`` and returns the
+    raw SDK response; any SDK exception is wrapped in :class:`ProviderError`.
+    """
+
+    def __init__(
+        self,
+        model: str,
+        name: str = "openai",
+        client: Any = None,
+        **client_kwargs: Any,
+    ) -> None:
+        self.name = name
+        self._model = model
+        if client is None:
+            import openai  # lazy: only needed for real usage
+
+            client = openai.OpenAI(**client_kwargs)
+        self._client = client
+
+    def invoke(self, request: Any) -> Any:
+        try:
+            return self._client.chat.completions.create(
+                model=self._model, messages=request["messages"]
+            )
+        except Exception as exc:  # wrap ALL SDK/network errors uniformly
+            raise ProviderError(f"{self.name} call failed: {exc}") from exc
+
+
+class AnthropicProvider(Provider):
+    """Thin adapter over the Anthropic Messages API.
+
+    The ``anthropic`` SDK is imported lazily and only when no ``client`` is
+    injected. ``invoke`` expects ``{"messages": [...]}`` and returns the raw SDK
+    response; any SDK exception is wrapped in :class:`ProviderError`.
+    """
+
+    def __init__(
+        self,
+        model: str,
+        name: str = "anthropic",
+        client: Any = None,
+        max_tokens: int = 1024,
+        **client_kwargs: Any,
+    ) -> None:
+        self.name = name
+        self._model = model
+        self._max_tokens = max_tokens
+        if client is None:
+            import anthropic  # lazy: only needed for real usage
+
+            client = anthropic.Anthropic(**client_kwargs)
+        self._client = client
+
+    def invoke(self, request: Any) -> Any:
+        try:
+            return self._client.messages.create(
+                model=self._model,
+                max_tokens=self._max_tokens,
+                messages=request["messages"],
+            )
+        except Exception as exc:
+            raise ProviderError(f"{self.name} call failed: {exc}") from exc
