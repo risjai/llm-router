@@ -14,3 +14,6 @@ build/
 
 # Generated evidence HTML scratch (PNGs are committed, HTML is not)
 images/_html/
+
+# Playwright MCP scratch
+.playwright-mcp/

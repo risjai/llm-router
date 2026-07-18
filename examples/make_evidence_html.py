@@ -46,8 +46,10 @@ pre { font-family: 'SF Mono', Menlo, Monaco, monospace; font-size: 14.5px;
 .bar-row { display:flex; align-items:center; margin:14px 0; }
 .bar-label { width: 220px; font-family:'SF Mono',Menlo,monospace; font-size:14px; }
 .bar-track { flex:1; background:#21262d; border-radius:6px; height:34px; position:relative;}
-.bar-fill { height:100%; border-radius:6px; display:flex; align-items:center;
-  justify-content:flex-end; padding-right:12px; font-weight:700; font-size:14px; color:#fff;}
+.bar-fill { height:100%; border-radius:6px; font-weight:700; font-size:14px; color:#fff;
+  min-width:6px; }
+.bar-val { position:absolute; top:0; height:34px; display:flex; align-items:center;
+  padding-left:14px; font-weight:700; font-size:14px; color:#e6edf3; }
 .bar-fill.primary{background:linear-gradient(90deg,#1f6feb,#58a6ff);}
 .bar-fill.secondary{background:linear-gradient(90deg,#238636,#3fb950);}
 .bar-fill.reject{background:linear-gradient(90deg,#da3633,#f85149);}
@@ -138,9 +140,14 @@ def main() -> None:
 
     # --- Image 3: recovery — primary snaps back to HEALTHY / 100%
     s4 = slice_between(demo, r"SCENARIO 4", r"DEMONSTRATION COMPLETE")
-    # keep the interesting head + the recovery transition + tail summary
-    head = s4[:8]
-    trans = [l for l in s4 if "HEALTH TRANSITION" in l]
+    # Head up to (and including) the first UNHEALTHY transition, then the
+    # recovery (HEALTHY) transition, then the tail summary — no duplicate lines.
+    head = []
+    for l in s4[:12]:
+        head.append(l)
+        if "HEALTH TRANSITION" in l and "UNHEALTHY" in l:
+            break
+    recovery = [l for l in s4 if "HEALTH TRANSITION" in l and "-> HEALTHY" in l]
     tail = s4[-6:]
     page(
         "Recovery — primary earns y=3 probes and snaps back to 100%",
@@ -149,7 +156,8 @@ def main() -> None:
         "<span class='badge up'>HEALTHY</span>, weights reset to "
         "<span class='hl'>[100, 0]</span>, and it reclaims all traffic.",
         "03_recovery_snap_back.html",
-        pre_from_lines(head + [""] + trans + [""] + tail),
+        pre_from_lines(head + ["    ... (5% probe stream continues sampling the primary) ..."]
+                       + recovery + [""] + tail),
     )
 
     # --- Image 4: distribution bar chart (200-request degraded window)
@@ -161,9 +169,11 @@ def main() -> None:
     chart = f"""
     <div class="chart">
       <div class="bar-row"><div class="bar-label">anthropic(secondary)<br><span class="muted">healthy · bulk</span></div>
-        <div class="bar-track"><div class="bar-fill secondary" style="width:{sec_pct}%">{sec} req · {sec_pct}%</div></div></div>
+        <div class="bar-track"><div class="bar-fill secondary" style="width:{sec_pct}%"></div>
+          <div class="bar-val" style="left:{sec_pct}%; transform:translateX(-100%); color:#fff;">{sec} req · {sec_pct}%</div></div></div>
       <div class="bar-row"><div class="bar-label">openai(primary)<br><span class="muted">unhealthy · 5% probe</span></div>
-        <div class="bar-track"><div class="bar-fill primary" style="width:{max(err_pct,4)}%">{err} req · {err_pct}%</div></div></div>
+        <div class="bar-track"><div class="bar-fill primary" style="width:{max(err_pct,3)}%"></div>
+          <div class="bar-val" style="left:{max(err_pct,3)}%;">{err} req · {err_pct}%</div></div></div>
     </div>
     <div class="legend">Measured over 200 live requests in the degraded steady state.
       The split is <span class="hl">exact</span> (5% × 200 = 10), because SWRR is deterministic — not sampled.</div>
