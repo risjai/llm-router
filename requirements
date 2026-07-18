@@ -1,0 +1,12 @@
+LLM failover router
+- routes request between LLM providers like OpenAI (primary), Anthropic (secondary). Lets say we have a base class and every provider extends that...
+- when primary is degraded, route to secondary
+- we have to design for n providers (each with priority..)
+- when primary is healthy, back to it
+- Ideal state - 100% request to primary
+- degraded state - (100 - p)% goes to secondary, p% still goes to primary. this applies at all levels. Eg : If both primary and secondary are unhealthy.. p% goes to primary, p% to seconday and (100 - p -p) % to next provider and so on...
+- when primary is back in healhy - route 100% back to priamry
+- How to know healthy or not
+  - If there are x consecutive failures, then that is unhealthy
+  - If there are y consecutive reqs in unhealthy, it is healthy
+- Overall system is multi-threaded (multiple concurrent requests can come)

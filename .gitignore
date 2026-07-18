@@ -8,3 +8,9 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# SDD orchestration scratch (git-ignored)
+.superpowers/
+
+# Generated evidence HTML scratch (PNGs are committed, HTML is not)
+images/_html/
