@@ -32,23 +32,28 @@ class ProviderHealth:
     def __init__(self, x: int, y: int) -> None:
         self._x = x
         self._y = y
-        self.state = HealthState.HEALTHY
+        self._state = HealthState.HEALTHY
         # Only the streak relevant to the current state matters; we keep one
         # counter and reinterpret it per state to avoid stale bookkeeping.
         self._consecutive = 0
 
+    @property
+    def state(self) -> HealthState:
+        """Current health state (read-only)."""
+        return self._state
+
     def is_healthy(self) -> bool:
-        return self.state is HealthState.HEALTHY
+        return self._state is HealthState.HEALTHY
 
     def record_success(self) -> bool:
-        if self.state is HealthState.HEALTHY:
+        if self._state is HealthState.HEALTHY:
             # Successes while healthy simply clear any partial failure streak.
             self._consecutive = 0
             return False
         # UNHEALTHY: count consecutive successes toward recovery.
         self._consecutive += 1
         if self._consecutive >= self._y:
-            self.state = HealthState.HEALTHY
+            self._state = HealthState.HEALTHY
             self._consecutive = 0
             return True
         return False
@@ -61,7 +66,7 @@ class ProviderHealth:
         # HEALTHY: count consecutive failures toward tripping.
         self._consecutive += 1
         if self._consecutive >= self._x:
-            self.state = HealthState.UNHEALTHY
+            self._state = HealthState.UNHEALTHY
             self._consecutive = 0
             return True
         return False
