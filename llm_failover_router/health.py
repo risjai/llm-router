@@ -30,6 +30,8 @@ class ProviderHealth:
     """
 
     def __init__(self, x: int, y: int) -> None:
+        if x < 1 or y < 1:
+            raise ValueError(f"x and y must be >= 1, got x={x}, y={y}")
         self._x = x
         self._y = y
         self._state = HealthState.HEALTHY

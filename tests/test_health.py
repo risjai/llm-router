@@ -51,3 +51,14 @@ def test_a_failure_resets_the_success_streak_while_unhealthy():
     assert h.state is HealthState.UNHEALTHY
     assert h.record_success() is True
     assert h.state is HealthState.HEALTHY
+
+
+def test_validates_x_and_y_are_at_least_1():
+    with pytest.raises(ValueError, match=r"x and y must be >= 1, got x=0, y=1"):
+        ProviderHealth(x=0, y=1)
+    with pytest.raises(ValueError, match=r"x and y must be >= 1, got x=1, y=0"):
+        ProviderHealth(x=1, y=0)
+    with pytest.raises(ValueError, match=r"x and y must be >= 1, got x=0, y=0"):
+        ProviderHealth(x=0, y=0)
+    with pytest.raises(ValueError, match=r"x and y must be >= 1, got x=-1, y=1"):
+        ProviderHealth(x=-1, y=1)
